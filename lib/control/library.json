@@ -1,0 +1,10 @@
+{
+  "name": "control",
+  "version": "0.1.0",
+  "description": "HAL-independent T12 control code, shared by the native simulation and the ESPHome component",
+  "build": {
+    "srcDir": ".",
+    "includeDir": ".",
+    "srcFilter": ["+<pid.cpp>", "+<heater_timing.cpp>"]
+  }
+}

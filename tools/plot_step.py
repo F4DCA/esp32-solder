@@ -36,12 +36,25 @@ for ti, yi in zip(t, T):
 sse = sp - T[-1]
 
 print(f"file             : {path}")
-print(f"samples          : {len(rows)}  ({t[-1]:.1f} s @ {len(rows)/t[-1]:.0f} Hz)")
+print(f"samples          : {len(rows)}  ({t[-1]:.1f} s, 100 Hz control / 20 Hz ADC)")
 print(f"setpoint         : {sp:.1f} C   (step from {t0:.1f} C)")
 print(f"rise time 10-90% : {tr:.2f} s")
 print(f"peak             : {peak:.1f} C @ {tp:.2f} s  ->  overshoot {overshoot:.1f} %")
 print(f"settling (+-2%)  : {t_settle:.2f} s")
 print(f"steady-state err : {sse:+.2f} C")
+
+# The harness samples the tip on every 5th frame, so show the duty of both frame
+# kinds next to the cycle average the plant actually sees.
+if "duty" in rows[0]:
+    duty = [float(r["duty"]) for r in rows]
+    tail = [i for i in range(max(0, len(rows) - 100), len(rows) - 1)]
+    ctrl = [duty[i] for i in tail if i % 5]
+    samp = [duty[i] for i in tail if i % 5 == 0]
+    if ctrl and samp:
+        cycle = (sum(ctrl) + sum(samp)) / (len(ctrl) + len(samp))
+        print(f"duty (control)   : {ctrl[-1]:.5f}")
+        print(f"duty (sample)    : {samp[-1]:.5f}")
+        print(f"duty (cycle)     : {cycle:.5f}")
 
 # ---- ASCII plot: '*' temp, '.' setpoint ----
 W, H = 64, 20

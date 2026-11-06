@@ -1,6 +1,6 @@
 #pragma once
 // First-order thermal model of the T12 tip's *sensed* node (the heating-element
-// film the thermocouple sits on — see the two-node discussion in INFO.md).
+// film the thermocouple sits on, see the two-node discussion in INFO.md).
 //
 //   Cth * dT/dt = P_in - (T - Tamb)/Rth ,   P_in = duty * Vsupply^2 / R_tip
 //

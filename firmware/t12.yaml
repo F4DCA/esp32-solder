@@ -1,0 +1,221 @@
+# T12 soldering station, ESP32-C3.
+#
+# The t12 component owns the 100 Hz control frame and the heater-off thermocouple
+# interlock; ESPHome owns Wi-Fi, the access point, the web UI, the native API,
+# OTA, logging and the OLED. Control maths and the frame scheduler come from
+# lib/control through components/t12, the same code the native simulation runs.
+#
+#   esphome config  firmware/t12.yaml     check the configuration
+#   esphome compile firmware/t12.yaml     build the firmware
+#   esphome run     firmware/t12.yaml     build and flash (hardware must be wired)
+#
+# Every credential comes from secrets.yaml, which is untracked and must define
+# ap_password, api_key (32 bytes, base64) and web_password. OTA reuses the API
+# key, which is the only form ESPHome accepts without wasting flash on a second
+# authenticator.
+#
+# Pinout follows BOM.md: heater on GPIO4 through the 2N2222A / IRLZ44N stage,
+# I2C on GPIO0/GPIO1, encoder on GPIO5/GPIO6, encoder button on GPIO7, the
+# handle shake switch on GPIO10 and the buzzer on GPIO3. I2C stays off GPIO8 and
+# GPIO9: those are C3 strapping pins and carry the DevKitM-1 RGB LED and BOOT
+# button respectively.
+
+substitutions:
+  device_name: esp32-solder
+  default_setpoint: "320.0"
+
+esphome:
+  name: ${device_name}
+  friendly_name: T12 Soldering Station
+  comment: ESP32-C3 T12 station, 100 Hz control, 20 Hz heater-off sampling
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+# The t12 component lives in this repository, next to the shared lib/control.
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [t12]
+
+logger:
+  baud_rate: 115200
+  level: INFO
+
+# The radio can be off for the whole session, so nothing may reboot waiting for
+# a client that will never arrive.
+api:
+  reboot_timeout: 0s
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    encryption:
+      key: !secret api_key
+
+wifi:
+  enable_on_boot: false
+  reboot_timeout: 0s
+  ap:
+    ssid: "esp32-solder"
+    password: !secret ap_password
+
+captive_portal:
+
+web_server:
+  port: 80
+  local: true
+  # The web UI must not offer a plaintext firmware upload; OTA goes through the
+  # esphome platform, which is covered by the API key.
+  ota: false
+  auth:
+    username: admin
+    password: !secret web_password
+    type: digest
+
+i2c:
+  id: bus_a
+  sda: GPIO0
+  scl: GPIO1
+  frequency: 400kHz
+  scan: false
+
+# Glyph sets are trimmed to what the two screens actually draw, a 42 px font
+# with the full ASCII set does not fit comfortably in the C3 flash budget.
+font:
+  - file: "gfonts://Roboto"
+    id: font_9x15
+    size: 15
+    glyphs: " !-.%:>0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ[]abcdefghijklmnopqrstuvwxyz"
+  - file: "gfonts://Roboto"
+    id: font_med_25
+    size: 25
+    glyphs: "0123456789"
+  - file: "gfonts://Roboto"
+    id: font_big_42
+    size: 42
+    glyphs: "0123456789"
+
+# The flush parks the heater, so the refresh rate is a duty-budget decision:
+# 500 ms keeps the parked time small enough to be invisible in the loop.
+display:
+  - platform: ssd1306_i2c
+    id: oled
+    model: "SSD1306 128x64"
+    address: 0x3C
+    i2c_id: bus_a
+    update_interval: 500ms
+    lambda: |-
+      id(solder_station).renderDisplay(it, id(font_9x15), id(font_med_25), id(font_big_42));
+
+t12:
+  id: solder_station
+  i2c_id: bus_a
+  ads1115_address: 0x48
+  heater_pin:
+    number: GPIO4
+    inverted: true
+  shake_pin:
+    number: GPIO10
+    mode: INPUT_PULLUP
+  buzzer_pin:
+    number: GPIO3
+  frontend_mode: OPAMP_3POINT
+  cal_adc_200: 216.0
+  cal_adc_280: 308.0
+  cal_adc_360: 390.0
+  kp: 0.0048
+  ki: 0.0036
+  kd: 0.0
+  default_setpoint: ${default_setpoint}
+  tip_name: "BC1.5"
+  csv_telemetry: false
+
+sensor:
+  - platform: rotary_encoder
+    id: encoder
+    pin_a:
+      number: GPIO5
+      mode: INPUT_PULLUP
+    pin_b:
+      number: GPIO6
+      mode: INPUT_PULLUP
+    resolution: 4
+    on_clockwise:
+      - lambda: id(solder_station).onEncoderStep(1);
+    on_anticlockwise:
+      - lambda: id(solder_station).onEncoderStep(-1);
+
+  - platform: template
+    name: "Tip Temperature"
+    id: tip_temperature
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: |-
+      return id(solder_station).currentTempC();
+
+  - platform: template
+    name: "Heater Duty"
+    id: heater_duty
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: |-
+      return id(solder_station).heaterDutyPercent();
+
+binary_sensor:
+  - platform: gpio
+    id: encoder_button
+    pin:
+      number: GPIO7
+      mode: INPUT_PULLUP
+      inverted: true
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_press:
+      - lambda: id(solder_station).onButtonPress();
+    on_release:
+      - lambda: id(solder_station).onButtonRelease();
+
+text_sensor:
+  - platform: template
+    name: "Operating Mode"
+    id: operating_mode
+    update_interval: 1s
+    lambda: |-
+      return std::string(id(solder_station).operatingModeText());
+
+# Both entities read the device back: the encoder and the OLED menu change the
+# setpoint and the radio without Home Assistant knowing. initial_value cannot
+# be combined with a lambda, so the boot value lives in t12: default_setpoint.
+number:
+  - platform: template
+    name: "Target Setpoint"
+    id: target_setpoint
+    min_value: 150
+    max_value: 400
+    step: 10
+    unit_of_measurement: "°C"
+    update_interval: 1s
+    lambda: |-
+      return id(solder_station).targetSetpoint();
+    set_action:
+      - lambda: id(solder_station).setTargetSetpoint(x);
+
+switch:
+  - platform: template
+    name: "Wi-Fi Enabled"
+    id: wifi_enabled
+    restore_mode: DISABLED
+    lambda: |-
+      return id(solder_station).wifiEnabled();
+    turn_on_action:
+      - lambda: id(solder_station).setWifiEnabled(true);
+    turn_off_action:
+      - lambda: id(solder_station).setWifiEnabled(false);
