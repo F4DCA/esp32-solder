@@ -1,0 +1,7 @@
+.pio/
+__pycache__/
+
+# native sim build output / generated artifacts
+sim_host
+step_response.csv
+step_response.svg
