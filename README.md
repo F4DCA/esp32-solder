@@ -4,6 +4,11 @@ A T12 soldering station on a single ESP32-C3: 24 V MOSFET heater stage, thermoco
 end, 128x64 OLED and a rotary encoder. No cloud service is involved and the iron works
 without a network.
 
+> **Work in progress, not tested yet.** Only the control code and the host simulation have
+> been run; the firmware compiles but has never been flashed, and the hardware has not been
+> assembled. The pinout, the calibration and the safety interlocks are unverified. Check
+> them yourself before you connect a heater.
+
 ## Status
 
 | Area | State |
