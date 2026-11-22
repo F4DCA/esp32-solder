@@ -93,23 +93,27 @@ reference/         third-party firmware and schematics, kept for reference only
 | SSD1306 0.96" 128x64 I2C OLED | 4-pin module |
 | EC11 rotary encoder with switch | or KY-040 module with its pull-ups removed |
 | ADS1115, 16-bit I2C ADC | thermocouple front end |
-| MCP6002 or OPA2330 op-amp | amplifier for the default 3-point front end; the direct thermocouple mode skips it |
-| IRLZ44N and 2N2222A | logic-level N-MOSFET, low-side heater switch, with a 10 k pull-down on the base so the FET stays off while the MCU is in reset |
+| MCP6002 or OPA2330 op-amp | amplifier for the default 3-point front end; the direct thermocouple mode skips it and its gain, but not the input protection |
+| IRF4905 and 2N2222A | P-channel high-side heater switch, with a 10 k gate pull-up so the FET stays off while the MCU is in reset |
 | 24 V, 5 A supply with a 5 A slow-blow fuse | buck converter down to 5 V for the MCU |
-| T12 handle, 5-pin GX16 cable, T12 tip | cartridge only |
+| T12 handle, 5-pin GX12 or GX16 cable, T12 tip | cartridge only |
 
-The heater is on GPIO4 through the inverting 2N2222A stage, I2C on GPIO0 and GPIO1, the
+The heater is on GPIO4 through the 2N2222A gate driver, I2C on GPIO0 and GPIO1, the
 encoder on GPIO5 and GPIO6, the encoder button on GPIO7, the handle shake switch on GPIO10
 and the buzzer on GPIO3. GPIO8 and GPIO9 are strapping pins on the C3 and also carry the
 DevKitM-1 RGB LED and BOOT button, so the bus avoids them.
 
+The heater switches the high side because the cartridge shares its two leads between heater
+and thermocouple. A low-side switch would leave the tip at 24 V while the ADC reads it, so
+the amplifier would see a constant and the station would fault at boot.
+
 ## Safety
 
 The firmware drives the heater off before its output is enabled and latches it off on a
-sensor error, a missing tip or over-temperature. The gate driver has to hold the FET off
-while the MCU is in reset, which is what the base pull-down is for. Trip points live in
-`lib/control/heater_timing.h`, and a remote setpoint goes through the same 150 to 400 °C
-clamp as the encoder.
+sensor error, a missing tip or over-temperature. The gate has to sit at the source voltage
+while the MCU is in reset, which is what the 10 k pull-up and the base pull-down do. Trip
+points live in `lib/control/heater_timing.h`, and a remote setpoint goes through the same
+150 to 400 °C clamp as the encoder.
 
 Wi-Fi is off at boot and switched on from the setup menu. With the radio off, the iron runs
 from the encoder and the display; the web UI, the API and OTA are reachable only while Wi-Fi

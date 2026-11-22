@@ -41,10 +41,10 @@ void T12Component::setup() {
   this->settle_us_ = static_cast<uint32_t>(timing.settle_us + 0.5);
   this->conv_us_ = static_cast<uint32_t>(timing.conv_us + 0.5);
 
-  // Heater OFF before anything else. The output is inverted in YAML, so a
-  // logical false drives the ESP32 pin HIGH, turns the 2N2222A on and pulls the
-  // IRLZ44N gate to GND. The pad is written low before it becomes an output so
-  // it is already at the safe level the moment the driver takes over.
+  // Heater OFF before anything else. GPIO4 low leaves the 2N2222A off, so the
+  // 10 k pull-up holds the P-channel gate at +24 V and the FET stays off. The
+  // pad is written low before it becomes an output so it is already at the safe
+  // level the moment the driver takes over.
   if (this->heater_pin_ != nullptr) {
     this->heater_pin_->digital_write(false);
     this->heater_pin_->setup();

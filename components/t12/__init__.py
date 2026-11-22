@@ -46,17 +46,18 @@ T12Component = t12_ns.class_("T12Component", cg.Component, i2c.I2CDevice)
 
 
 def validate_heater_pin(value):
-    """Reject a non-inverted heater output.
+    """Reject an inverted heater output.
 
-    The 2N2222A / IRLZ44N low-side stage switches the heater on while the pin is
-    high, so an un-inverted pin would drive the heater full on from the first
-    boot frame, before the scheduler can clamp it.
+    GPIO4 high turns the 2N2222A on, which pulls the P-channel gate low through
+    the 6.8 k and switches the heater on. An inverted pin would therefore drive
+    the heater full on from the first boot frame, before the scheduler can clamp
+    it.
     """
-    if not value[CONF_INVERTED]:
+    if value[CONF_INVERTED]:
         raise cv.Invalid(
-            "heater_pin must set inverted: true. The 2N2222A / IRLZ44N stage "
-            "switches the heater on while the pin is high, so a non-inverted "
-            "output drives the heater full on at boot.",
+            "heater_pin must not set inverted: true. GPIO4 high turns the "
+            "2N2222A on and switches the high-side P-channel MOSFET on, so an "
+            "inverted output drives the heater full on at boot.",
             path=[CONF_INVERTED],
         )
     return value
