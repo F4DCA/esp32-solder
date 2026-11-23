@@ -88,10 +88,9 @@ the original 10k/6.8k pair, but the 2.2k/2.2k pair works with both.
 ## Wiring
 
 `WIRING.md` has the net-by-net table, the component pin map and a bring-up order.
-`wiring.svg` and `wiring.png` are block diagrams. `t12.kicad_sch` is a KiCad schematic with a
-global label at every pin rather than routed wires. It was validated with `kicad-cli 10.0.8`;
-`t12.pdf` and `t12.net` are exported from it. The original v2.7 schematic is in `hardware/`,
-kept for the analog front end.
+The KiCad schematic, its renders and the netlist are kept local for now and will be
+published once the layout is finished. The original v2.7 schematic is in `hardware/`, kept
+for the analog front end.
 
 The handle's 5-pin pinout is not verified. The switch is assumed to return to P-. Confirm
 P+, P-, SW, E and NTC with a meter before wiring GPIO10.

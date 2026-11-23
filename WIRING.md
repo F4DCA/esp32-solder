@@ -174,11 +174,9 @@ The heater return carries 2.8 A. Run it as its own 20 AWG pair to the C4 negativ
 
 ## KiCad
 
-`t12.kicad_sch` is a native KiCad schematic (version 20231120, opens in KiCad 8 and
-newer). Every pin gets a global label rather than a routed wire, so it is a connection
-source you can edit, not a finished drawing. It was validated with `kicad-cli 10.0.8`:
-`sch export netlist` succeeds, and the exported netlist matches the table above pin for
-pin. `t12.pdf` is a preview, and `t12.net` is the exported netlist.
+The KiCad schematic, its SVG/PDF exports and the netlist are kept local for now. They were
+validated with `kicad-cli 10.0.8`: `sch export netlist` succeeds and the result matches the
+table above pin for pin. They will be published once the layout is finished.
 
 Refs R6/R7/R8 in this diagram are 10k/200k/1k. The upstream schematic calls the same three
 R7/R8/R9. To use gain 101 with the MCP6002, change R8 from 1k to 2k and recalibrate.
